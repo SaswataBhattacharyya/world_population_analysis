@@ -1,0 +1,136 @@
+# Exclude large data files
+*.pdf
+saved_models/
+data/10m_cultural/
+# Include only necessary shapefile components
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.shp
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.dbf
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.prj
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.shx
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.cpg
+arima_combined_df.csv
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Include world_population.csv
+!world_population.csv
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# Distribution / packaging
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these scripts are created by a PyInstaller freeze
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+*.pkl
+*.csv
+*.xlsx
+*.json
+*.db
+*.sqlite
+*.log
+
+# Generated forecasts and figures
+*.png
+*.jpg
+*.jpeg
+*.html
+
+# User-uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flask
+instance/
+.webassets-cache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Large files - only exclude these specific large files
+data/10m_cultural.zip
+data/10m_cultural/10m_cultural/*.dbf
+data/10m_cultural/10m_cultural/ne_10m_roads_north_america.*
+
+# Keep only the essential shapefile components we need
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.shp
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.shx
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.prj
+!data/10m_cultural/10m_cultural/ne_10m_admin_0_countries.cpg 
