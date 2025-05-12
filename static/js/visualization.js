@@ -95,115 +95,137 @@ function fetchVisualizations(data) {
 }
 
 // Function to display visualizations
-function displayVisualizations(visualizations) {
-    console.log("DEBUG: Full visualizations object:", visualizations);
-    console.log("DEBUG: World visualizations:", visualizations.world);
-    console.log("DEBUG: World country-wise maps:", {
-        population: visualizations.world?.population_maps_country_wise,
-        density: visualizations.world?.density_maps_country_wise,
-        growth: visualizations.world?.growth_maps_country_wise
-    });
+function displayVisualizations(plotIds) {
+    console.log("DEBUG: Full plot IDs object:", plotIds);
 
     // Helper function to set image source
-    const setImage = (id, base64Data) => {
+    const setImage = async (id, plotId) => {
         const element = document.getElementById(id);
-        if (element && base64Data) {
-            element.src = `data:image/png;base64,${base64Data}`;
-        } else {
-            console.log(`DEBUG: Missing data for ${id}:`, base64Data);
+        console.log(`[DEBUG] setImage called for id='${id}', plotId='${plotId}'`);
+        if (!element) {
+            console.warn(`[DEBUG] No element found in DOM for id='${id}'`);
+            return;
+        }
+        if (!plotId) {
+            console.warn(`[DEBUG] No plotId provided for id='${id}'`);
+            element.style.display = 'none';
+            element.alt = 'No data available';
+            return;
+        }
+        try {
+            // Show loading state
+            element.style.display = 'block';
+            element.src = '';
+            element.alt = 'Loading...';
+            console.log(`[DEBUG] Fetching /get_plot/${plotId} for id='${id}'`);
+            const response = await fetch(`/get_plot/${plotId}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                element.src = URL.createObjectURL(blob);
+                element.alt = '';
+                console.log(`[DEBUG] Successfully loaded image for id='${id}'`);
+            } else {
+                console.error(`[DEBUG] Failed to load plot for id='${id}', plotId='${plotId}', status=${response.status}`);
+                element.style.display = 'none';
+                element.alt = 'Failed to load image';
+            }
+        } catch (error) {
+            console.error(`[DEBUG] Error loading plot for id='${id}', plotId='${plotId}':`, error);
+            element.style.display = 'none';
+            element.alt = 'Error loading image';
         }
     };
 
     // Display country visualizations
-    if (visualizations.country) {
-        setImage('country-location-map', visualizations.country.location_map);
-        setImage('country-population-graph', visualizations.country.population_graph);
-        setImage('country-population-maps', visualizations.country.population_maps);
-        setImage('country-density-graph', visualizations.country.density_graph);
-        setImage('country-density-maps', visualizations.country.density_maps);
-        setImage('country-growth-graph', visualizations.country.growth_graph);
-        setImage('country-growth-maps', visualizations.country.growth_maps);
-        setImage('country-population-pie-charts', visualizations.country.population_pie_charts);
+    if (plotIds.country) {
+        Object.entries(plotIds.country).forEach(([type, id]) => {
+            setImage(`country-${type}`, id);
+        });
     }
 
     // Display continent visualizations
-    if (visualizations.continent) {
-        setImage('continent-location-map', visualizations.continent.location_map);
-        setImage('continent-population-graph', visualizations.continent.population_graph);
-        setImage('continent-population-maps', visualizations.continent.population_maps);
-        setImage('continent-density-graph', visualizations.continent.density_graph);
-        setImage('continent-density-maps', visualizations.continent.density_maps);
-        setImage('continent-growth-graph', visualizations.continent.growth_graph);
-        setImage('continent-growth-maps', visualizations.continent.growth_maps);
-        setImage('continent-population-pie-charts', visualizations.continent.population_pie_charts);
-        // New country-wise maps for continent
-        setImage('continent-population-maps-country-wise', visualizations.continent.population_maps_country_wise);
-        setImage('continent-density-maps-country-wise', visualizations.continent.density_maps_country_wise);
-        setImage('continent-growth-maps-country-wise', visualizations.continent.growth_maps_country_wise);
+    if (plotIds.continent) {
+        Object.entries(plotIds.continent).forEach(([type, id]) => {
+            setImage(`continent-${type}`, id);
+        });
     }
 
     // Display world visualizations
-    if (visualizations.world) {
-        setImage('world-population-graph', visualizations.world.population_graph);
-        setImage('world-population-maps', visualizations.world.population_maps);
-        setImage('world-density-graph', visualizations.world.density_graph);
-        setImage('world-density-maps', visualizations.world.density_maps);
-        setImage('world-growth-graph', visualizations.world.growth_graph);
-        setImage('world-growth-maps', visualizations.world.growth_maps);
-        // New continent-wise and country-wise maps for world
-        setImage('world-population-maps-continent-wise', visualizations.world.population_maps_continent_wise);
-        setImage('world-population-maps-country-wise', visualizations.world.population_maps_country_wise);
-        setImage('world-density-maps-continent-wise', visualizations.world.density_maps_continent_wise);
-        setImage('world-density-maps-country-wise', visualizations.world.density_maps_country_wise);
-        setImage('world-growth-maps-continent-wise', visualizations.world.growth_maps_continent_wise);
-        setImage('world-growth-maps-country-wise', visualizations.world.growth_maps_country_wise);
+    if (plotIds.world) {
+        Object.entries(plotIds.world).forEach(([type, id]) => {
+            setImage(`world-${type}`, id);
+        });
     }
 }
 
 // Helper to show only the selected map type for continent
 function showContinentMapView(view) {
     // Hide all
-    document.getElementById('continent-population-maps').style.display = 'none';
-    document.getElementById('continent-density-maps').style.display = 'none';
-    document.getElementById('continent-growth-maps').style.display = 'none';
-    document.getElementById('continent-population-maps-country-wise').style.display = 'none';
-    document.getElementById('continent-density-maps-country-wise').style.display = 'none';
-    document.getElementById('continent-growth-maps-country-wise').style.display = 'none';
+    const ids = [
+        'continent-population_maps',
+        'continent-density_maps',
+        'continent-growth_maps',
+        'continent-population_maps_country_wise',
+        'continent-density_maps_country_wise',
+        'continent-growth_maps_country_wise'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn(`Element '${id}' not found!`);
+        } else {
+            el.style.display = 'none';
+        }
+    });
     if (view === 'whole') {
-        document.getElementById('continent-population-maps').style.display = '';
-        document.getElementById('continent-density-maps').style.display = '';
-        document.getElementById('continent-growth-maps').style.display = '';
+        ['continent-population_maps', 'continent-density_maps', 'continent-growth_maps'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
     } else if (view === 'country-wise') {
-        document.getElementById('continent-population-maps-country-wise').style.display = '';
-        document.getElementById('continent-density-maps-country-wise').style.display = '';
-        document.getElementById('continent-growth-maps-country-wise').style.display = '';
+        ['continent-population_maps_country_wise', 'continent-density_maps_country_wise', 'continent-growth_maps_country_wise'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
     }
 }
 
 // Helper to show only the selected map type for world
 function showWorldMapView(view) {
-    // Hide all
-    document.getElementById('world-population-maps').style.display = 'none';
-    document.getElementById('world-density-maps').style.display = 'none';
-    document.getElementById('world-growth-maps').style.display = 'none';
-    document.getElementById('world-population-maps-continent-wise').style.display = 'none';
-    document.getElementById('world-population-maps-country-wise').style.display = 'none';
-    document.getElementById('world-density-maps-continent-wise').style.display = 'none';
-    document.getElementById('world-density-maps-country-wise').style.display = 'none';
-    document.getElementById('world-growth-maps-continent-wise').style.display = 'none';
-    document.getElementById('world-growth-maps-country-wise').style.display = 'none';
+    const ids = [
+        'world-population_maps',
+        'world-density_maps',
+        'world-growth_maps',
+        'world-population_maps_continent_wise',
+        'world-population_maps_country_wise',
+        'world-density_maps_continent_wise',
+        'world-density_maps_country_wise',
+        'world-growth_maps_continent_wise',
+        'world-growth_maps_country_wise'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn(`Element '${id}' not found!`);
+        } else {
+            el.style.display = 'none';
+        }
+    });
     if (view === 'whole') {
-        document.getElementById('world-population-maps-country-wise').style.display = '';
-        document.getElementById('world-density-maps').style.display = '';
-        document.getElementById('world-growth-maps').style.display = '';
+        ['world-population_maps', 'world-density_maps', 'world-growth_maps'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
     } else if (view === 'continent-wise') {
-        document.getElementById('world-population-maps-continent-wise').style.display = '';
-        document.getElementById('world-density-maps-continent-wise').style.display = '';
-        document.getElementById('world-growth-maps-continent-wise').style.display = '';
+        ['world-population_maps_continent_wise', 'world-density_maps_continent_wise', 'world-growth_maps_continent_wise'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
     } else if (view === 'country-wise') {
-        document.getElementById('world-population-maps').style.display = '';
-        document.getElementById('world-density-maps-country-wise').style.display = '';
-        document.getElementById('world-growth-maps-country-wise').style.display = '';
+        ['world-population_maps_country_wise', 'world-density_maps_country_wise', 'world-growth_maps_country_wise'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
     }
 }
 
@@ -266,17 +288,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Store the plots and form data for later display
                 sessionStorage.setItem('visualizationData', JSON.stringify({
                     formData: formData,
-                    plots: result.plots
+                    plot_ids: result.plot_ids
                 }));
                 // Remove the pending data
                 sessionStorage.removeItem('pendingVisualizationData');
                 // Hide loading spinner
                 if (loadingEl) loadingEl.style.display = 'none';
                 // Display the visualizations
-                const { plots } = result;
+                const { plot_ids } = result;
                 updateVisibleSections(formData.selection_types);
                 updateSectionTitles(formData);
-                displayVisualizations(plots);
+                displayVisualizations(plot_ids);
             } else {
                 alert('Error: ' + result.message);
                 if (loadingEl) loadingEl.style.display = 'none';
@@ -293,11 +315,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // If redirected, display the visualizations as before
     const storedData = sessionStorage.getItem('visualizationData');
     if (storedData) {
-        const { formData, plots } = JSON.parse(storedData);
-        console.log("visualization.js: Displaying plots after redirect", plots);
+        const { formData, plot_ids } = JSON.parse(storedData);
+        console.log("visualization.js: Displaying plots after redirect", plot_ids);
         updateVisibleSections(formData.selection_types);
         updateSectionTitles(formData);
-        displayVisualizations(plots);
+        displayVisualizations(plot_ids);
         sessionStorage.removeItem('visualizationData');
         if (loadingEl) loadingEl.style.display = 'none';
     } else {

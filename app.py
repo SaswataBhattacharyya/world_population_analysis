@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -13,8 +13,37 @@ import io
 import base64
 from matplotlib.colors import ListedColormap
 from sklearn.preprocessing import MinMaxScaler
+from pymongo import MongoClient
+from bson import ObjectId
+from datetime import datetime
 
 warnings.filterwarnings("ignore")
+
+# MongoDB setup
+client = MongoClient('mongodb://localhost:27017/')
+db = client['world_population']
+plots_collection = db['plots']
+
+def save_plot_to_mongodb(plot_data, plot_type, metadata):
+    """Save plot to MongoDB and return its ID"""
+    try:
+        # Convert base64 to binary
+        image_data = base64.b64decode(plot_data)
+        
+        # Create document
+        plot_doc = {
+            'plot_type': plot_type,
+            'metadata': metadata,
+            'image_data': image_data,
+            'created_at': datetime.utcnow()
+        }
+        
+        # Insert and return ID
+        result = plots_collection.insert_one(plot_doc)
+        return str(result.inserted_id)
+    except Exception as e:
+        print(f"Error saving plot to MongoDB: {str(e)}")
+        return None
 
 app = Flask(__name__)
 
@@ -111,30 +140,42 @@ def get_data():
             ]
             debug_print(f"Filtered {key} data shape: {filtered_data[key].shape}")
         
-        # Generate plots for filtered data
-        plots = {}
+        # Generate plots and store in MongoDB
+        plot_ids = {}
         
         # For world level
         if 'world' in selection_types:
-            plots['world'] = {
+            plot_ids['world'] = {}
+            world_plots = {
                 'population_graph': fig_to_base64(create_population_graph(filtered_data['world'], 'World Population', 'world')),
                 'population_maps': fig_to_base64(create_population_maps(filtered_data['world'], start_year, end_year, 'world')),
                 'density_graph': fig_to_base64(create_density_graph(filtered_data['world'], 'World Population Density', 'world')),
                 'density_maps': fig_to_base64(create_density_maps(filtered_data['world'], start_year, end_year, 'world')),
                 'growth_graph': fig_to_base64(create_growth_graph(filtered_data['world'], 'World Population Growth', 'world')),
                 'growth_maps': fig_to_base64(create_growth_maps(filtered_data['world'], start_year, end_year, 'world')),
-                # Add continent-wise and country-wise maps for world
                 'population_maps_continent_wise': fig_to_base64(create_population_maps(filtered_data['world'], start_year, end_year, 'world-continent-wise')),
                 'population_maps_country_wise': fig_to_base64(create_population_maps(filtered_data['world'], start_year, end_year, 'world-country-wise')),
                 'density_maps_continent_wise': fig_to_base64(create_density_maps(filtered_data['world'], start_year, end_year, 'world-continent-wise')),
                 'density_maps_country_wise': fig_to_base64(create_density_maps(filtered_data['world'], start_year, end_year, 'world-country-wise')),
                 'growth_maps_continent_wise': fig_to_base64(create_growth_maps(filtered_data['world'], start_year, end_year, 'world-continent-wise')),
-                'growth_maps_country_wise': fig_to_base64(create_growth_maps(filtered_data['world'], start_year, end_year, 'world-country-wise')),
+                'growth_maps_country_wise': fig_to_base64(create_growth_maps(filtered_data['world'], start_year, end_year, 'world-country-wise'))
             }
+            
+            for plot_type, plot_data in world_plots.items():
+                if plot_data:
+                    metadata = {
+                        'section': 'world',
+                        'plot_type': plot_type,
+                        'selection': data
+                    }
+                    plot_id = save_plot_to_mongodb(plot_data, plot_type, metadata)
+                    if plot_id:
+                        plot_ids['world'][plot_type] = plot_id
         
         # For continent level
         if 'continent' in selection_types and continent:
-            plots['continent'] = {
+            plot_ids['continent'] = {}
+            continent_plots = {
                 'location_map': fig_to_base64(create_continent_location_map(continent)),
                 'population_graph': fig_to_base64(create_population_graph(filtered_data['continent'], f'{continent} Population', 'continent')),
                 'population_maps': fig_to_base64(create_population_maps(filtered_data['continent'], start_year, end_year, 'continent')),
@@ -143,15 +184,26 @@ def get_data():
                 'growth_graph': fig_to_base64(create_growth_graph(filtered_data['continent'], f'{continent} Population Growth', 'continent')),
                 'growth_maps': fig_to_base64(create_growth_maps(filtered_data['continent'], start_year, end_year, 'continent')),
                 'population_pie_charts': fig_to_base64(create_population_pie_charts(filtered_data['continent'], start_year, end_year, 'continent', continent)),
-                # Add country-wise maps for continent
                 'population_maps_country_wise': fig_to_base64(create_population_maps(filtered_data['continent'], start_year, end_year, 'continent-country-wise')),
                 'density_maps_country_wise': fig_to_base64(create_density_maps(filtered_data['continent'], start_year, end_year, 'continent-country-wise')),
-                'growth_maps_country_wise': fig_to_base64(create_growth_maps(filtered_data['continent'], start_year, end_year, 'continent-country-wise')),
+                'growth_maps_country_wise': fig_to_base64(create_growth_maps(filtered_data['continent'], start_year, end_year, 'continent-country-wise'))
             }
+            
+            for plot_type, plot_data in continent_plots.items():
+                if plot_data:
+                    metadata = {
+                        'section': 'continent',
+                        'plot_type': plot_type,
+                        'selection': data
+                    }
+                    plot_id = save_plot_to_mongodb(plot_data, plot_type, metadata)
+                    if plot_id:
+                        plot_ids['continent'][plot_type] = plot_id
         
         # For country level
         if 'country' in selection_types and country:
-            plots['country'] = {
+            plot_ids['country'] = {}
+            country_plots = {
                 'location_map': fig_to_base64(create_country_location_map(country)),
                 'population_graph': fig_to_base64(create_population_graph(filtered_data['country'], f'{country} Population', 'country')),
                 'population_maps': fig_to_base64(create_population_maps(filtered_data['country'], start_year, end_year, 'country')),
@@ -161,12 +213,23 @@ def get_data():
                 'growth_maps': fig_to_base64(create_growth_maps(filtered_data['country'], start_year, end_year, 'country')),
                 'population_pie_charts': fig_to_base64(create_population_pie_charts(filtered_data['country'], start_year, end_year, 'country', country))
             }
+            
+            for plot_type, plot_data in country_plots.items():
+                if plot_data:
+                    metadata = {
+                        'section': 'country',
+                        'plot_type': plot_type,
+                        'selection': data
+                    }
+                    plot_id = save_plot_to_mongodb(plot_data, plot_type, metadata)
+                    if plot_id:
+                        plot_ids['country'][plot_type] = plot_id
         
         debug_print("app.py: Finished generating plots, returning to visualization.js")
         return jsonify({
             'status': 'success',
             'data': data,
-            'plots': plots
+            'plot_ids': plot_ids
         })
         
     except Exception as e:
@@ -560,7 +623,7 @@ def create_growth_maps(data, start_year, end_year, level='country'):
     if level == 'continent-country-wise':
         continent_name = start_data['Continent'].iloc[0]
         for ax, year_data, year in zip([ax1, ax2], [start_data, end_data], [start_year, end_year]):
-            countries = start_data[start_data['Continent'] == continent_name]
+            countries = world[world['CONTINENT'] == continent_name]
             merged = countries.merge(
                 year_data[['Country/Territory', 'Growth']],
                 left_on='NAME', right_on='Country/Territory', how='left'
@@ -878,6 +941,20 @@ def fig_to_base64(fig):
 def visualization():
     """Route to render the visualization page"""
     return render_template('visualization.html')
+
+@app.route('/get_plot/<plot_id>')
+def get_plot(plot_id):
+    """Fetch a specific plot from MongoDB"""
+    try:
+        plot = plots_collection.find_one({'_id': ObjectId(plot_id)})
+        if plot:
+            return send_file(
+                io.BytesIO(plot['image_data']),
+                mimetype='image/png'
+            )
+        return jsonify({'status': 'error', 'message': 'Plot not found'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False) 
